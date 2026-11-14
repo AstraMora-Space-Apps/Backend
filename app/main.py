@@ -281,9 +281,9 @@ async def export_csv_endpoint(
 
     writer = csv.writer(output)
     writer.writerow([
-        "id",
+        "test_id",
         "investigation_id",
-        "investigation_name",
+        "investigation",
         "fuel",
         "fuel_class",
         "flow_direction",
@@ -296,8 +296,8 @@ async def export_csv_endpoint(
         "spread_rate",
         "citation_paper",
         "citation_page",
-        "citation_quote",
         "sample",
+        "dataset_status",
     ])
 
     for t in matching_tests:
@@ -317,8 +317,8 @@ async def export_csv_endpoint(
             t.spread_rate if t.spread_rate is not None else "",
             t.citation.paper_title if t.citation else "",
             t.citation.page if t.citation and t.citation.page is not None else "",
-            t.citation.quote if t.citation else "",
             t.sample,
+            "v0.1, preliminary / unverified",
         ])
 
     csv_content = output.getvalue()

@@ -134,9 +134,9 @@ class ScienceService:
         for t in tests:
             d_o2 = round(t.o2_percent - target_o2_percent, 2)
             d_p = round(t.pressure_psi - target_pressure_psi, 2)
-            # Normalization scale (O2 ~100%, Pressure ~15 psi)
+            # Normalization scale (O2 ~100%, Pressure ~16 psi, matching Frontend relevance.ts)
             norm_o2 = d_o2 / 100.0
-            norm_p = d_p / 15.0
+            norm_p = d_p / 16.0
             dist = math.sqrt(norm_o2**2 + norm_p**2)
             score = round(1.0 / (1.0 + 5.0 * dist), 4)
 

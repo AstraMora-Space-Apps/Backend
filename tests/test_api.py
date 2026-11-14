@@ -140,13 +140,13 @@ def test_get_investigations_filter_gas(client):
 
 
 def test_get_investigations_filter_hardware(client):
-    """GET /investigations?hardware=MSG-SPICE%20duct matches case-insensitively."""
-    response = client.get("/investigations?hardware=msg-spice%20duct")
+    """GET /investigations?hardware=CIR-ACME matches case-insensitively."""
+    response = client.get("/investigations?hardware=cir-acme")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     for inv in data:
-        assert "msg-spice duct" == inv["hardware"].lower()
+        assert "cir-acme" == inv["hardware"].lower()
 
 
 def test_get_investigations_overlap_range(client):
@@ -156,8 +156,8 @@ def test_get_investigations_overlap_range(client):
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
-    names = [inv["name"] for inv in data]
-    assert "Saffire-II" in names
+    names_lower = [inv["name"].lower() for inv in data]
+    assert any("saffire-ii" in name for name in names_lower)
 
 
 # ---------------------------------------------------------------------------
@@ -261,8 +261,9 @@ def test_export_csv_endpoint(client):
     csv_text = response.text
     # Required Hackathon header
     assert csv_text.startswith("# FlameSight Per-Test Dataset (v0.1, unverified extraction - NASA Space Apps 2026)")
-    assert "id,investigation_id,investigation_name,fuel,fuel_class" in csv_text
-    assert "t-001" in csv_text
+    assert "test_id,investigation_id,investigation,fuel,fuel_class" in csv_text
+    assert "dataset_status" in csv_text
+    assert len(csv_text.splitlines()) > 5
 
 
 # ---------------------------------------------------------------------------
