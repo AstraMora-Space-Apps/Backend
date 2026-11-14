@@ -131,6 +131,29 @@ class AIProxyService:
                 data = response.json()
                 latency_ms = round((time.time() - t0) * 1000, 1)
                 data["latency_ms"] = latency_ms
+
+                # Normalize citations from flamesight upstream (title -> paper_title, url -> source_url)
+                if "citations" in data and isinstance(data["citations"], list):
+                    normalized_cits = []
+                    for cit in data["citations"][:4]:  # Cap at max 4 citations
+                        if isinstance(cit, dict):
+                            c = dict(cit)
+                            if "paper_title" not in c and "title" in c:
+                                c["paper_title"] = c.pop("title")
+                            if "source_url" not in c and "url" in c:
+                                c["source_url"] = c.pop("url")
+                            normalized_cits.append(c)
+                        else:
+                            normalized_cits.append(cit)
+                    data["citations"] = normalized_cits
+
+                # Enforce contract: when grounded is False, answer MUST be "" and evidence MUST be None
+                if not data.get("grounded", True):
+                    data["grounded"] = False
+                    data["answer"] = ""
+                    data["citations"] = []
+                    data["evidence"] = None
+
                 ask_resp = AskResponse.model_validate(data)
                 self._store_in_cache(req.question, ask_resp)
                 return ask_resp

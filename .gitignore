@@ -24,8 +24,10 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments & local envs
 .env
+.env.local
+.env.*.local
 .venv*
 venv*
 
@@ -35,10 +37,14 @@ venv*
 htmlcov/
 .tox/
 
-# SQLite databases (local dev copies)
-data/*.db
+# SQLite databases & journals
+*.db-journal
+*.db-wal
+*.db-shm
 data/*.sqlite
 data/*.sqlite3
+data/*.db
+!data/flamesight.db
 !data/.gitkeep
 
 # IDEs

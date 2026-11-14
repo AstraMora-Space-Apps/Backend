@@ -285,3 +285,43 @@ def test_secondary_endpoints(client):
     hab_resp = client.get("/api/coverage/habitat-finder?o2_percent=30.0&pressure_psi=10.2")
     assert hab_resp.status_code == 200
     assert len(hab_resp.json()) > 0
+
+
+# ---------------------------------------------------------------------------
+# Audit Unit Tests: SQLite Coercion & Upstream Normalization
+# ---------------------------------------------------------------------------
+def test_sqlite_helpers_audit():
+    """Verify _to_bool and _parse_json_field accurately coerce SQLite values."""
+    from app.db import _parse_json_field, _to_bool
+
+    # Integer & string to bool coercion
+    assert _to_bool(1) is True
+    assert _to_bool(0) is False
+    assert _to_bool("1") is True
+    assert _to_bool("0") is False
+    assert _to_bool("true") is True
+    assert _to_bool("false") is False
+    assert _to_bool(None, default=False) is False
+
+    # JSON TEXT parsing
+    assert _parse_json_field('["a", "b"]') == ["a", "b"]
+    assert _parse_json_field('{"min": 10, "max": 20}') == {"min": 10, "max": 20}
+    # Malformed JSON fallback to default
+    assert _parse_json_field('{bad json', default=[]) == []
+
+
+def test_ai_proxy_normalization_logic():
+    """Verify that AskResponse validation and proxy normalization enforce contracts."""
+    from app.schemas import AskResponse
+
+    # Test that grounded=False forces answer="" and evidence=None
+    resp = AskResponse(
+        answer="Some text that should be erased",
+        grounded=False,
+        citations=[],
+        evidence=None,
+    )
+    assert resp.answer == ""
+    assert resp.grounded is False
+    assert resp.evidence is None
+

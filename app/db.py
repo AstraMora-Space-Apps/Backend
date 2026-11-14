@@ -5,6 +5,7 @@ or transparently falls back to the verified seed dataset (sample=True).
 """
 
 import json
+import logging
 import os
 import sqlite3
 from typing import Dict, List, Optional
@@ -25,6 +26,8 @@ from app.seed_data import (
     SAFETY_MARGINS_SEED,
     TEST_RECORDS_SEED,
 )
+
+logger = logging.getLogger("flamesight.db")
 
 
 def _check_table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
@@ -65,6 +68,30 @@ def is_sqlite_connected() -> bool:
     return False
 
 
+def _to_bool(val: object, default: bool = False) -> bool:
+    """Safely coerce SQLite integers (0/1), strings, or booleans to Python bool."""
+    if val is None:
+        return default
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    if isinstance(val, str):
+        return val.strip().lower() in ("true", "1", "yes", "t")
+    return default
+
+
+def _parse_json_field(val: object, default: object = None) -> object:
+    """Safely parse JSON-encoded TEXT columns from SQLite."""
+    if isinstance(val, str) and val.strip():
+        try:
+            return json.loads(val)
+        except Exception as exc:
+            logger.warning("Failed to parse JSON column: %s. Using default.", exc)
+            return default
+    return val if val is not None else default
+
+
 # ---------------------------------------------------------------------------
 # Investigations
 # ---------------------------------------------------------------------------
@@ -76,27 +103,27 @@ def fetch_all_investigations() -> List[Investigation]:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM investigations")
             rows = cursor.fetchall()
-            results = []
-            for row in rows:
-                d = dict(row)
-                d["sample"] = False
-                # Parse JSON fields if stored as text in SQLite
-                if isinstance(d.get("fuels"), str):
-                    d["fuels"] = json.loads(d["fuels"])
-                if isinstance(d.get("conditions"), str):
-                    d["conditions"] = json.loads(d["conditions"])
-                if isinstance(d.get("variables"), str):
-                    d["variables"] = json.loads(d["variables"])
-                if isinstance(d.get("sensors"), str):
-                    d["sensors"] = json.loads(d["sensors"])
-                if isinstance(d.get("citations"), str):
-                    d["citations"] = json.loads(d["citations"])
-                results.append(Investigation.model_validate(d))
-            conn.close()
-            if results:
-                return results
-        except Exception:
-            pass
+            if rows:
+                results = []
+                for row in rows:
+                    d = dict(row)
+                    d["sample"] = False
+                    d["fuels"] = _parse_json_field(d.get("fuels"), default=[])
+                    d["conditions"] = _parse_json_field(d.get("conditions"), default={})
+                    d["variables"] = _parse_json_field(d.get("variables"), default=[])
+                    d["sensors"] = _parse_json_field(d.get("sensors"), default=[])
+                    d["citations"] = _parse_json_field(d.get("citations"), default=[])
+                    results.append(Investigation.model_validate(d))
+                conn.close()
+                if results:
+                    return results
+        except Exception as exc:
+            logger.warning("Error reading investigations from SQLite: %s. Falling back to seed.", exc)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     return list(INVESTIGATIONS_SEED)
 
@@ -127,18 +154,24 @@ def fetch_all_tests() -> List[TestRecord]:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM tests")
             rows = cursor.fetchall()
-            results = []
-            for row in rows:
-                d = dict(row)
-                d["sample"] = False
-                if isinstance(d.get("citation"), str) and d["citation"].strip():
-                    d["citation"] = json.loads(d["citation"])
-                results.append(TestRecord.model_validate(d))
-            conn.close()
-            if results:
-                return results
-        except Exception:
-            pass
+            if rows:
+                results = []
+                for row in rows:
+                    d = dict(row)
+                    d["sample"] = False
+                    d["ended_early"] = _to_bool(d.get("ended_early"), default=False)
+                    d["citation"] = _parse_json_field(d.get("citation"), default=None)
+                    results.append(TestRecord.model_validate(d))
+                conn.close()
+                if results:
+                    return results
+        except Exception as exc:
+            logger.warning("Error reading tests from SQLite: %s. Falling back to seed.", exc)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     return list(TEST_RECORDS_SEED)
 
@@ -155,21 +188,29 @@ def fetch_all_insights() -> List[Insight]:
             cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {table}")
             rows = cursor.fetchall()
-            results = []
-            for row in rows:
-                d = dict(row)
-                d["sample"] = False
-                if isinstance(d.get("citations"), str) and d["citations"].strip():
-                    d["citations"] = json.loads(d["citations"])
-                # Compute score if missing
-                if "score" not in d:
-                    d["score"] = d["safety_impact"] * d["evidence_strength"] * d["mission_relevance"]
-                results.append(Insight.model_validate(d))
-            conn.close()
-            if results:
-                return results
-        except Exception:
-            pass
+            if rows:
+                results = []
+                for row in rows:
+                    d = dict(row)
+                    d["sample"] = False
+                    d["reviewed"] = _to_bool(d.get("reviewed"), default=False)
+                    d["citations"] = _parse_json_field(d.get("citations"), default=[])
+                    if "score" not in d or d["score"] is None:
+                        impact = int(d.get("safety_impact", 4))
+                        evidence = int(d.get("evidence_strength", 4))
+                        relevance = int(d.get("mission_relevance", 4))
+                        d["score"] = impact * evidence * relevance
+                    results.append(Insight.model_validate(d))
+                conn.close()
+                if results:
+                    return results
+        except Exception as exc:
+            logger.warning("Error reading insights from SQLite: %s. Falling back to seed.", exc)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     return list(INSIGHTS_SEED)
 
