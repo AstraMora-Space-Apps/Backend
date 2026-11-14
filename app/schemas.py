@@ -103,8 +103,8 @@ class Fuel(BaseModel):
 class Conditions(BaseModel):
     """Chamber atmospheric and ventilation boundary conditions."""
 
-    o2_percent: RangeObj = Field(description="Oxygen mole percent range")
-    pressure_psi: RangeObj = Field(description="Chamber total pressure in psi range")
+    o2_percent: Optional[RangeObj] = Field(default=None, description="Oxygen mole percent range or null")
+    pressure_psi: Optional[RangeObj] = Field(default=None, description="Chamber total pressure in psi range or null")
     flow_speed_cm_s: Optional[RangeObj] = Field(default=None, description="Ventilation speed in cm/s or null")
 
     model_config = ConfigDict(extra="ignore")
@@ -119,7 +119,7 @@ class Investigation(BaseModel):
     pillar: Pillar = Field(description="Fire safety pillar (prevention, detection, suppression, supporting)")
     objective: str = Field(description="Flight investigation objective")
     fuels: List[Fuel] = Field(default_factory=list)
-    conditions: Conditions
+    conditions: Optional[Conditions] = Field(default=None, description="Chamber atmospheric boundary conditions or null")
     variables: List[str] = Field(default_factory=list)
     sensors: List[str] = Field(default_factory=list)
     citations: List[Citation] = Field(default_factory=list)
@@ -139,12 +139,12 @@ class TestRecord(BaseModel):
     investigation_name: str = Field(description="Investigation name, e.g. BASS-II")
     fuel: str = Field(description="Specific fuel or gas tested")
     fuel_class: FuelClass = Field(description="solid, gas, or liquid")
-    flow_direction: FlowDirection = Field(description="opposed, concurrent, or quiescent")
-    o2_percent: float = Field(ge=0.0, le=100.0, description="Ambient oxygen concentration %")
-    pressure_psi: float = Field(ge=0.0, description="Chamber pressure in psi")
+    flow_direction: Optional[FlowDirection] = Field(default=None, description="opposed, concurrent, quiescent, or null")
+    o2_percent: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Ambient oxygen concentration % or null")
+    pressure_psi: Optional[float] = Field(default=None, ge=0.0, description="Chamber pressure in psi or null")
     flow_speed_cm_s: Optional[float] = Field(default=None, description="Forced flow speed in cm/s or null")
     platform: Platform = Field(description="iss, drop_tower, or other")
-    ended_early: bool = Field(description="True if flame was still burning at end of run (hollow marker)")
+    ended_early: Optional[bool] = Field(default=None, description="True if flame was still burning at end of run or null")
     result: str = Field(description="Combustion outcome description")
     spread_rate: Optional[float] = Field(default=None, description="Flame spread rate in mm/s or null")
     citation: Optional[Citation] = Field(default=None, description="Source citation or null")

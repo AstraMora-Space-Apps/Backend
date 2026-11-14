@@ -11,22 +11,51 @@ from app.schemas import (
 )
 
 
-def overlaps(lo: float, hi: float, min_val: Optional[float] = None, max_val: Optional[float] = None) -> bool:
-    """Range overlap helper: returns True if [lo, hi] overlaps [min_val, max_val]."""
+def overlaps(
+    lo: Optional[float],
+    hi: Optional[float],
+    min_val: Optional[float] = None,
+    max_val: Optional[float] = None,
+) -> bool:
+    """Range overlap helper: returns True if [lo, hi] overlaps [min_val, max_val].
+
+    If no boundary filter is given (min_val and max_val are None), returns True.
+    If a filter is applied but lo or hi is None, returns False (unknown range cannot match).
+    """
+    if min_val is None and max_val is None:
+        return True
+    if lo is None or hi is None:
+        return False
     return (min_val is None or hi >= min_val) and (max_val is None or lo <= max_val)
 
 
-def within(val: float, min_val: Optional[float] = None, max_val: Optional[float] = None) -> bool:
-    """Inclusive range helper: returns True if val is within [min_val, max_val]."""
+def within(
+    val: Optional[float],
+    min_val: Optional[float] = None,
+    max_val: Optional[float] = None,
+) -> bool:
+    """Inclusive range helper: returns True if val is within [min_val, max_val].
+
+    If no boundary filter is given (min_val and max_val are None), returns True.
+    If a filter is applied but val is None, returns False (unknown value cannot match).
+    """
+    if min_val is None and max_val is None:
+        return True
+    if val is None:
+        return False
     return (min_val is None or val >= min_val) and (max_val is None or val <= max_val)
 
 
-def same_text(a: str, b: Optional[str]) -> bool:
+def same_text(a: Optional[str], b: Optional[str]) -> bool:
     """Case-insensitive exact string match."""
-    return not b or a.strip().lower() == b.strip().lower()
+    if not b:
+        return True
+    if a is None:
+        return False
+    return a.strip().lower() == b.strip().lower()
 
 
-def includes_text(haystack: List[str], q: Optional[str]) -> bool:
+def includes_text(haystack: List[Optional[str]], q: Optional[str]) -> bool:
     """Case-insensitive substring search across string list."""
     if not q or not q.strip():
         return True
@@ -50,8 +79,9 @@ class ScienceService:
         q: Optional[str] = None,
     ) -> bool:
         """Filter an investigation against criteria. Range filters use OVERLAP."""
-        cond_o2 = inv.conditions.o2_percent
-        cond_p = inv.conditions.pressure_psi
+        cond = inv.conditions
+        cond_o2 = cond.o2_percent if cond else None
+        cond_p = cond.pressure_psi if cond else None
 
         if fuel_class and not any(fuel.fuel_class == fuel_class for fuel in inv.fuels):
             return False
@@ -62,10 +92,14 @@ class ScienceService:
         if pillar and inv.pillar != pillar:
             return False
 
-        if not overlaps(cond_o2.min, cond_o2.max, o2_min, o2_max):
+        o2_lo = cond_o2.min if cond_o2 else None
+        o2_hi = cond_o2.max if cond_o2 else None
+        if not overlaps(o2_lo, o2_hi, o2_min, o2_max):
             return False
 
-        if not overlaps(cond_p.min, cond_p.max, pressure_min, pressure_max):
+        p_lo = cond_p.min if cond_p else None
+        p_hi = cond_p.max if cond_p else None
+        if not overlaps(p_lo, p_hi, pressure_min, pressure_max):
             return False
 
         if q:
@@ -129,9 +163,15 @@ class ScienceService:
         target_pressure_psi: float,
         limit: int = 10,
     ) -> List[HabitatRelevanceItem]:
-        """Rank tests by normalized Euclidean distance to a target habitat atmosphere."""
+        """Rank tests by normalized Euclidean distance to a target habitat atmosphere.
+
+        Skips tests whose o2_percent or pressure_psi is null.
+        """
         items: List[HabitatRelevanceItem] = []
         for t in tests:
+            if t.o2_percent is None or t.pressure_psi is None:
+                continue
+
             d_o2 = round(t.o2_percent - target_o2_percent, 2)
             d_p = round(t.pressure_psi - target_pressure_psi, 2)
             # Normalization scale (O2 ~100%, Pressure ~16 psi, matching Frontend relevance.ts)

@@ -121,11 +121,14 @@ def test_get_investigations_raw_array(client):
         for fuel in inv["fuels"]:
             assert fuel["fuel_class"] in ["solid", "gas", "liquid"]
             assert "sample_size" in fuel
-        # Conditions must contain ranges in psi
+        # Conditions can be null or contain optional ranges in psi
         assert "conditions" in inv
         conds = inv["conditions"]
-        assert conds["o2_percent"]["min"] <= conds["o2_percent"]["max"]
-        assert conds["pressure_psi"]["min"] <= conds["pressure_psi"]["max"]
+        if conds is not None:
+            if conds["o2_percent"] is not None:
+                assert conds["o2_percent"]["min"] <= conds["o2_percent"]["max"]
+            if conds["pressure_psi"] is not None:
+                assert conds["pressure_psi"]["min"] <= conds["pressure_psi"]["max"]
         assert isinstance(inv["sample"], bool)
 
 
@@ -151,13 +154,13 @@ def test_get_investigations_filter_hardware(client):
 
 def test_get_investigations_overlap_range(client):
     """GET /investigations with range parameters checks OVERLAP."""
-    # Saffire-II has o2_percent [21, 26], pressure_psi [10.2, 14.7]
+    # FLEX has o2_percent [12.0, 34.0], pressure_psi [10.2, 44.9]
     response = client.get("/investigations?o2_min=20&o2_max=22&pressure_min=10&pressure_max=12")
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
     names_lower = [inv["name"].lower() for inv in data]
-    assert any("saffire-ii" in name for name in names_lower)
+    assert any("flex" in name for name in names_lower)
 
 
 # ---------------------------------------------------------------------------
@@ -176,11 +179,15 @@ def test_get_tests_raw_array(client):
         assert "investigation_id" in t
         assert "investigation_name" in t
         assert t["fuel_class"] in ["solid", "gas", "liquid"]
-        assert t["flow_direction"] in ["opposed", "concurrent", "quiescent"]
-        assert 0.0 <= t["o2_percent"] <= 100.0
-        assert t["pressure_psi"] >= 0.0
+        if t["flow_direction"] is not None:
+            assert t["flow_direction"] in ["opposed", "concurrent", "quiescent"]
+        if t["o2_percent"] is not None:
+            assert 0.0 <= t["o2_percent"] <= 100.0
+        if t["pressure_psi"] is not None:
+            assert t["pressure_psi"] >= 0.0
         assert t["platform"] in ["iss", "drop_tower", "other"]
-        assert isinstance(t["ended_early"], bool)
+        if t["ended_early"] is not None:
+            assert isinstance(t["ended_early"], bool)
         assert isinstance(t["sample"], bool)
         # spread_rate is in mm/s or null
         if t["spread_rate"] is not None:
@@ -325,4 +332,40 @@ def test_ai_proxy_normalization_logic():
     assert resp.answer == ""
     assert resp.grounded is False
     assert resp.evidence is None
+
+
+def test_real_sqlite_data_loading():
+    """Verify live SQLite data ingestion (30 investigations, 1,979 tests, 281 insights)."""
+    from app.db import (
+        fetch_all_insights,
+        fetch_all_investigations,
+        fetch_all_tests,
+        is_sqlite_connected,
+    )
+
+    assert is_sqlite_connected() is True
+
+    # 1. Investigations
+    invs = fetch_all_investigations()
+    assert len(invs) == 30
+    assert all(i.sample is False for i in invs)
+
+    # 2. Tests
+    tests = fetch_all_tests()
+    assert len(tests) == 1979
+    assert all(t.sample is False for t in tests)
+
+    # 3. Insights
+    insights = fetch_all_insights()
+    assert len(insights) == 281
+    assert all(ins.sample is False for ins in insights)
+
+    # Confirm nullable fields validate without triggering seed fallback
+    null_o2_count = sum(1 for t in tests if t.o2_percent is None)
+    assert null_o2_count > 0
+    null_p_count = sum(1 for t in tests if t.pressure_psi is None)
+    assert null_p_count > 0
+    null_flow_dir_count = sum(1 for t in tests if t.flow_direction is None)
+    assert null_flow_dir_count > 0
+
 

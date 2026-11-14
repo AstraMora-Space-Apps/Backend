@@ -308,6 +308,7 @@ def fetch_all_tests() -> List[TestRecord]:
                         d["sample"] = False
                         if isinstance(d.get("citation"), str) and d["citation"].strip():
                             d["citation"] = json.loads(d["citation"])
+                        d["ended_early"] = None if d.get("ended_early") is None else _to_bool(d.get("ended_early"))
                         results.append(TestRecord.model_validate(d))
                         continue
 
