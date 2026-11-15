@@ -13,12 +13,12 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: AI_SERVICE_URL
-        value: ""
+        value: "https://flamesight.onrender.com"   # hosted /ask (flamesight/ai/Dockerfile); no trailing slash
       - key: DB_PATH
         value: "data/flamesight.db"
       - key: CACHE_TTL_SECONDS
         value: 300
       - key: AI_PROXY_TIMEOUT_SECONDS
-        value: 8.0
+        value: 30.0   # Claude-written answers take 6-8 s warm; the AI service's first request after idle ~45 s
       - key: ALLOWED_ORIGINS
         value: "*"

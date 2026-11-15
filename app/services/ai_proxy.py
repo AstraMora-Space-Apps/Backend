@@ -27,7 +27,7 @@ class AIProxyService:
         limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
         self.client = httpx.AsyncClient(
             limits=limits,
-            timeout=settings.AI_PROXY_TIMEOUT_SECONDS,  # 8.0s timeout
+            timeout=settings.AI_PROXY_TIMEOUT_SECONDS,
             headers={"User-Agent": "FlameSight-BFF/v0.1"},
         )
         logger.info("Initialized pooled AsyncClient with timeout %ss.", settings.AI_PROXY_TIMEOUT_SECONDS)
@@ -168,9 +168,9 @@ class AIProxyService:
                 str(exc),
             )
 
-        fallback = self.grounded_stub_fallback(req.question, t0)
-        self._store_in_cache(req.question, fallback)
-        return fallback
+        # Not cached: a timeout while the AI service wakes up (Render free tier) must not pin the stub answer
+        # for CACHE_TTL_SECONDS; the next request should reach the real service again.
+        return self.grounded_stub_fallback(req.question, t0)
 
 
 ai_proxy_service = AIProxyService()

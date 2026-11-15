@@ -25,8 +25,9 @@ class Settings(BaseSettings):
     # Query response caching TTL (in seconds)
     CACHE_TTL_SECONDS: int = 300
 
-    # Upstream AI proxy timeout in seconds (<8.5s to fit safely within frontend 10s budget)
-    AI_PROXY_TIMEOUT_SECONDS: float = 8.0
+    # Upstream AI proxy timeout in seconds. Claude-written answers take 6-8 s warm and the hosted AI service's
+    # first request after idle about 45 s, so keep the Frontend's NEXT_PUBLIC_API_TIMEOUT_MS above this (50000).
+    AI_PROXY_TIMEOUT_SECONDS: float = 30.0
 
     # CORS origins
     ALLOWED_ORIGINS: Union[str, List[str]] = ["*"]
