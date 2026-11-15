@@ -20,7 +20,7 @@ def client():
 # Health & Root Endpoints
 # ---------------------------------------------------------------------------
 def test_health_contract(client):
-    """GET /health must match Dinith's HealthResponse schema."""
+    """GET /health must match the Frontend's HealthResponse schema."""
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()

@@ -64,7 +64,7 @@ class AIProxyService:
         self._cache[key] = (response, expire_at)
 
     def grounded_stub_fallback(self, question: str, start_time: float) -> AskResponse:
-        """Scientifically grounded fallback matching Dinith's frontend contract.
+        """Scientifically grounded fallback matching the Frontend contract.
 
         Rules (exact match with Frontend/src/lib/api.ts STUB_ASK_ROUTES):
         - keywords ["moon", "30%"] -> Moon Base 30% O2 answer (grounded=True, citations 2-4)

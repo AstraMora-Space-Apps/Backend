@@ -191,7 +191,7 @@ class Insight(BaseModel):
 # Health & Secondary Models
 # ---------------------------------------------------------------------------
 class HealthResponse(BaseModel):
-    """Healthcheck response matching Dinith's API contract."""
+    """Healthcheck response matching the Frontend's API contract."""
 
     status: str = "ok"
     version: str = "v0.1-hackathon"

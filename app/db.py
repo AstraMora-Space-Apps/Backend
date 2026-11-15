@@ -1,6 +1,6 @@
 """SQLite data access layer with dual-mode mapping:
 
-1. Seamlessly maps Dhinanjaya's real NASA PSI database (flamesight.db with 30 investigations,
+1. Seamlessly maps the pipeline's real NASA PSI database (flamesight.db with 30 investigations,
    1,979 tests, 307 findings, and 448 sources) to Frontend Pydantic models with sample=False.
 2. Transparently falls back to verified seed data whenever flamesight.db is not present.
 """
@@ -139,7 +139,7 @@ def fetch_all_investigations() -> List[Investigation]:
                         results.append(Investigation.model_validate(d))
                         continue
 
-                    # Otherwise, map Dhinanjaya's raw flamesight.db schema
+                    # Otherwise, map the pipeline's raw flamesight.db schema
                     inv_name = d.get("investigation") or "NASA-EXP"
                     inv_id = f"inv-{inv_name.lower().replace(' ', '-').replace('_', '-')}"
                     hardware = d.get("hardware") or "ISS Flight Rig"
@@ -312,7 +312,7 @@ def fetch_all_tests() -> List[TestRecord]:
                         results.append(TestRecord.model_validate(d))
                         continue
 
-                    # Map Dhinanjaya's raw tests schema
+                    # Map the pipeline's raw tests schema
                     inv_name = d.get("investigation") or "NASA-EXP"
                     t_id = d.get("test_id") or f"t-psi-{idx+1:04d}"
                     mat = d.get("material") or "Tested Material"
@@ -445,7 +445,7 @@ def fetch_all_insights() -> List[Insight]:
                         results.append(Insight.model_validate(d))
                         continue
 
-                    # Map Dhinanjaya's raw findings schema
+                    # Map the pipeline's raw findings schema
                     f_id = d.get("finding_id") or f"ins-psi-{idx+1:03d}"
                     inv_name = d.get("investigation") or "NASA-PSI"
                     stmt = d.get("statement") or "NASA PSI combustion safety finding."

@@ -87,7 +87,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     "/health",
     response_model=HealthResponse,
     tags=["System"],
-    summary="Healthcheck endpoint matching Dinith's contract",
+    summary="Healthcheck endpoint matching the Frontend's contract",
 )
 async def health() -> HealthResponse:
     """Check backend health and SQLite connection status."""
